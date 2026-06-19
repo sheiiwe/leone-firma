@@ -128,6 +128,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-se
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="cess" id="cess-data" onchange="toggleCessData()"> A una data specifica (entro 60 gg)</label>
         </div>
         <input type="date" id="cess-input" disabled style="display:block;padding:9px 12px;border:1px solid #d0d0c8;border-radius:8px;font-size:14px;font-family:inherit">
+
+        <div style="font-weight:700;font-size:14px;margin:18px 0 8px">Motivazione del recesso</div>
+        <p style="font-size:12px;color:#6b6b66;margin-bottom:10px">Indica il motivo per cui recedi dall'incarico.</p>
+        <div style="display:flex;flex-direction:column;gap:9px;font-size:14px">
+          <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer"><input type="radio" name="recmot" value="assunzione" onchange="toggleRecAltro()"> <span>Assunzione presso altro datore di lavoro / nuovo rapporto subordinato</span></label>
+          <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer"><input type="radio" name="recmot" value="impresa" onchange="toggleRecAltro()"> <span>Avvio di attività di impresa / lavoro autonomo</span></label>
+          <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer"><input type="radio" name="recmot" value="personali" onchange="toggleRecAltro()"> <span>Motivi personali</span></label>
+          <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer"><input type="radio" name="recmot" value="altro" onchange="toggleRecAltro()"> <span>Altro (specificare)</span></label>
+        </div>
+        <input type="text" id="recmot-altro" disabled placeholder="Specifica la motivazione" style="display:block;width:100%;box-sizing:border-box;margin-top:10px;padding:9px 12px;border:1px solid #d0d0c8;border-radius:8px;font-size:14px;font-family:inherit">
       </div>
 
       <div id="block-documenti" style="margin-top:18px;padding-top:14px;border-top:1px solid #eee">
@@ -339,6 +349,11 @@ function toggleCessData(){
   const dataSel = document.getElementById('cess-data')
   document.getElementById('cess-input').disabled = !(dataSel && dataSel.checked)
 }
+function toggleRecAltro(){
+  const altroSel = document.querySelector('input[name="recmot"]:checked')
+  const inp = document.getElementById('recmot-altro')
+  if(inp){ inp.disabled = !(altroSel && altroSel.value==='altro'); if(inp.disabled) inp.value='' }
+}
 function toggleVisura(){
   const si = document.getElementById('piva-si')
   const row = document.getElementById('row-visura')
@@ -381,6 +396,7 @@ async function firmaContratto() {
   if (!document.getElementById('chk-fiscale').checked) { alert('Devi acconsentire al trattamento dati per finalita fiscali e contabili.'); return }
 
   let dataCessazione = null
+  let recessoMotivo = null, recessoAltro = ''
   if (isRecesso) {
     if (document.getElementById('cess-data').checked) {
       const v = document.getElementById('cess-input').value
@@ -388,6 +404,13 @@ async function firmaContratto() {
       dataCessazione = v.split('-').reverse().join('/')
     } else {
       dataCessazione = new Date().toLocaleDateString('it-IT')
+    }
+    const mot = document.querySelector('input[name="recmot"]:checked')
+    if (!mot) { alert('Seleziona la motivazione del recesso.'); return }
+    recessoMotivo = mot.value
+    if (recessoMotivo === 'altro') {
+      recessoAltro = (document.getElementById('recmot-altro').value || '').trim()
+      if (!recessoAltro) { alert('Hai scelto \u0022Altro\u0022: specifica la motivazione del recesso.'); return }
     }
   } else {
     const pivaSi = document.getElementById('piva-si'), pivaNo = document.getElementById('piva-no')
@@ -420,7 +443,7 @@ async function firmaContratto() {
     }
     const pivaSiEl = document.getElementById('piva-si')
     const datiAggiornati = { ...contratto, statoFirma:'Firmato', dataFirma, firmaBase64, ipFirma:ip, timestampFirma:now.toISOString(), hasPiva: !isRecesso && pivaSiEl.checked, consensoFiscale: true, documentiCaricati }
-    if (isRecesso) { datiAggiornati.dataCessazione = dataCessazione }
+    if (isRecesso) { datiAggiornati.dataCessazione = dataCessazione; datiAggiornati.recessoMotivo = recessoMotivo; datiAggiornati.recessoAltro = recessoAltro }
 
     const { error } = await db.from('contratti_firme').update({ data: datiAggiornati }).eq('id', contratto._id)
     if (error) throw error
