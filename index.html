@@ -151,8 +151,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-se
         <input type="file" id="up-identita" accept="image/*,application/pdf" onchange="caricaAllegato(this,&#39;identita&#39;)" style="display:block;margin-bottom:12px;font-size:13px">
         <label style="font-size:13px;display:block;margin-bottom:4px">Carta d&#39;identita &mdash; <b>RETRO</b> (foto o PDF)</label>
         <input type="file" id="up-identita-retro" accept="image/*,application/pdf" onchange="caricaAllegato(this,&#39;identita_retro&#39;)" style="display:block;margin-bottom:14px;font-size:13px">
-        <label style="font-size:13px;display:block;margin-bottom:4px">Foto tessera sanitaria / codice fiscale (foto o PDF)</label>
-        <input type="file" id="up-cf" accept="image/*,application/pdf" onchange="caricaAllegato(this,&#39;cf&#39;)" style="display:block;margin-bottom:14px;font-size:13px">
+        <label style="font-size:13px;display:block;margin-bottom:4px">Tessera sanitaria / codice fiscale &mdash; <b>FRONTE</b> (foto o PDF)</label>
+        <input type="file" id="up-cf" accept="image/*,application/pdf" onchange="caricaAllegato(this,&#39;cf&#39;)" style="display:block;margin-bottom:12px;font-size:13px">
+        <label style="font-size:13px;display:block;margin-bottom:4px">Tessera sanitaria / codice fiscale &mdash; <b>RETRO</b> (foto o PDF)</label>
+        <input type="file" id="up-cf-retro" accept="image/*,application/pdf" onchange="caricaAllegato(this,&#39;cf_retro&#39;)" style="display:block;margin-bottom:14px;font-size:13px">
         <div id="row-visura">
           <label style="font-size:13px;display:block;margin-bottom:4px">Visura camerale o equivalente (obbligatoria se hai Partita IVA)</label>
           <input type="file" id="up-visura" accept="image/*,application/pdf" onchange="caricaAllegato(this,&#39;visura&#39;)" style="display:block;margin-bottom:4px;font-size:13px">
@@ -346,7 +348,7 @@ function cancellaFirma() {
   hasFirma = false
 }
 
-let allegati = { identita:null, identita_retro:null, cf:null, visura:null }
+let allegati = { identita:null, identita_retro:null, cf:null, cf_retro:null, visura:null }
 function toggleCessData(){
   const dataSel = document.getElementById('cess-data')
   document.getElementById('cess-input').disabled = !(dataSel && dataSel.checked)
@@ -384,7 +386,7 @@ function caricaAllegato(input, key){
 }
 function aggiornaStatoAllegati(){
   const s=document.getElementById('up-stato'); if(!s) return
-  const a=[]; if(allegati.identita) a.push('\u2713 Documento (fronte)'); if(allegati.identita_retro) a.push('\u2713 Documento (retro)'); if(allegati.cf) a.push('\u2713 Codice fiscale'); if(allegati.visura) a.push('\u2713 Visura')
+  const a=[]; if(allegati.identita) a.push('\u2713 Documento (fronte)'); if(allegati.identita_retro) a.push('\u2713 Documento (retro)'); if(allegati.cf) a.push('\u2713 Codice fiscale (fronte)'); if(allegati.cf_retro) a.push('\u2713 Codice fiscale (retro)'); if(allegati.visura) a.push('\u2713 Visura')
   s.textContent = a.join('    ')
 }
 function toggleTutteClausole(cb){
@@ -419,7 +421,8 @@ async function firmaContratto() {
     if (!(pivaSi.checked || pivaNo.checked)) { alert('Indica se hai la Partita IVA.'); return }
     if (!allegati.identita) { alert('Carica la foto del FRONTE del documento d\u0027identita.'); return }
     if (!allegati.identita_retro) { alert('Carica la foto del RETRO del documento d\u0027identita.'); return }
-    if (!allegati.cf) { alert('Carica la foto della tessera sanitaria / codice fiscale.'); return }
+    if (!allegati.cf) { alert('Carica la foto del FRONTE della tessera sanitaria / codice fiscale.'); return }
+    if (!allegati.cf_retro) { alert('Carica la foto del RETRO della tessera sanitaria / codice fiscale.'); return }
     if (pivaSi.checked && !allegati.visura) { alert('Avendo Partita IVA devi caricare la visura camerale (o equivalente).'); return }
   }
 
@@ -435,7 +438,7 @@ async function firmaContratto() {
 
     const documentiCaricati = {}
     if (!isRecesso) {
-      const mapKey = { identita:'carta_identita', identita_retro:'carta_identita_retro', cf:'codice_fiscale', visura:'visura_camerale' }
+      const mapKey = { identita:'carta_identita', identita_retro:'carta_identita_retro', cf:'codice_fiscale', cf_retro:'codice_fiscale_retro', visura:'visura_camerale' }
       for (const k of Object.keys(allegati)) {
         const a = allegati[k]; if(!a || !a.blob) continue
         const path = 'firme-doc/' + token + '/' + mapKey[k] + '.' + (a.ext||'bin')
@@ -506,8 +509,8 @@ async function inviaEmailAdmin(d, dataFirma) {
   const emailAdmin = 'amministrazione@leoneconsultingitalia.it'
   const cessRow = d.dataCessazione ? `<tr style="border-bottom:1px solid #eee"><td style="padding:10px 0;color:#666">Data effettiva cessazione</td><td style="padding:10px 0;font-weight:600">${d.dataCessazione}</td></tr>` : ''
   // Documenti caricati dal firmatario -> link pubblici scaricabili dall'email
-  const labelDoc = { carta_identita:'Carta d\u0027identit\u00e0 (fronte)', carta_identita_retro:'Carta d\u0027identit\u00e0 (retro)', codice_fiscale:'Codice fiscale / Tessera sanitaria', visura_camerale:'Visura camerale' }
-  const ordine = ['carta_identita','carta_identita_retro','codice_fiscale','visura_camerale']
+  const labelDoc = { carta_identita:'Carta d\u0027identit\u00e0 (fronte)', carta_identita_retro:'Carta d\u0027identit\u00e0 (retro)', codice_fiscale:'Codice fiscale / Tessera (fronte)', codice_fiscale_retro:'Codice fiscale / Tessera (retro)', visura_camerale:'Visura camerale' }
+  const ordine = ['carta_identita','carta_identita_retro','codice_fiscale','codice_fiscale_retro','visura_camerale']
   const dc = d.documentiCaricati || {}
   const linkBase = SUPA_URL + '/storage/v1/object/public/contratti/'
   const keysDoc = ordine.filter(k=>dc[k]).concat(Object.keys(dc).filter(k=>dc[k] && ordine.indexOf(k)<0))
