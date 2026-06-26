@@ -221,13 +221,11 @@ let isRecesso = false
 async function init() {
   if (!token) { mostra('stato-errore'); return }
   try {
-    let { data, error } = await db.from('contratti_firme').select('*').eq('data->>signToken', token)
+    const { data: resp, error } = await db.functions.invoke('firma-portale', { body: { action:'get', token } })
     if (error) throw error
-    let row = (data || [])[0]
-    if (!row) { const r2 = await db.from('contratti_firme').select('*'); row = (r2.data || []).find(r => (r.data || r).signToken === token) }
-    if (!row) { mostra('stato-errore'); return }
-    contratto = row.data || row
-    contratto._id = row.id
+    if (!resp || resp.ok !== true || !resp.data) { mostra('stato-errore'); return }
+    contratto = resp.data
+    contratto._id = resp.id
     if (contratto.statoFirma === 'Firmato') { mostra('stato-gia-firmato'); return }
     isRecesso = /recess/i.test(contratto.tipoContratto || '')
     document.getElementById('inf-nome').textContent = contratto.nomeDestinatario || '—'
@@ -451,8 +449,12 @@ async function firmaContratto() {
     const datiAggiornati = { ...contratto, statoFirma:'Firmato', dataFirma, firmaBase64, ipFirma:ip, timestampFirma:now.toISOString(), hasPiva: !isRecesso && pivaSiEl.checked, consensoFiscale: true, documentiCaricati }
     if (isRecesso) { datiAggiornati.dataCessazione = dataCessazione; datiAggiornati.recessoMotivo = recessoMotivo; datiAggiornati.recessoAltro = recessoAltro }
 
-    const { error } = await db.from('contratti_firme').update({ data: datiAggiornati }).eq('id', contratto._id)
+    const { data: sresp, error } = await db.functions.invoke('firma-portale', { body: { action:'sign', token, dati: datiAggiornati } })
     if (error) throw error
+    if (sresp && sresp.error) {
+      if (sresp.error === 'gia_firmato') { mostra('stato-gia-firmato'); return }
+      throw new Error(sresp.error)
+    }
 
     await inviaEmailConferma(datiAggiornati, dataFirma)
     await inviaEmailAdmin(datiAggiornati, dataFirma)
