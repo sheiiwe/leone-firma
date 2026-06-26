@@ -185,6 +185,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-se
         </label>
       </div>
 
+      <div id="box-consensi-doc" style="display:none;margin-top:18px;border-top:1px solid #e6e3da;padding-top:12px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:6px">Trattamento dati &mdash; docente</div>
+        <label class="checkbox-row">
+          <input type="checkbox" id="chk-presa-visione">
+          Dichiaro di aver ricevuto e compreso l&#39;informativa sul trattamento dei dati e accetto la <strong>nomina a Responsabile del trattamento</strong> ai sensi dell&#39;art. 28 GDPR. Prendo atto che per tali finalit&agrave; non &egrave; richiesto un consenso specifico.
+        </label>
+        <div style="font-size:12.5px;line-height:1.5;color:#1a1a18;padding:10px 0 4px">Comunicazioni commerciali e di marketing <span style="color:#888">(facoltativo e revocabile in qualsiasi momento)</span>:</div>
+        <label class="checkbox-row" style="border-bottom:none;padding-top:2px">
+          <input type="radio" name="mkt" id="mkt-si" value="si" style="width:16px;height:16px;accent-color:#185FA5">
+          Acconsento a ricevere comunicazioni commerciali e di marketing.
+        </label>
+        <label class="checkbox-row" style="padding-top:2px">
+          <input type="radio" name="mkt" id="mkt-no" value="no" style="width:16px;height:16px;accent-color:#185FA5">
+          Non acconsento.
+        </label>
+      </div>
+
       <button class="btn btn-p" id="btn-firma" onclick="firmaContratto()" style="margin-top:16px">
         ✍️ Firma e conferma contratto
       </button>
@@ -232,6 +249,7 @@ async function init() {
     document.getElementById('inf-tipo').textContent = contratto.tipoContratto || '—'
     document.getElementById('inf-data').textContent = contratto.dataInvio || '—'
     document.getElementById('chk-tipo-ct').textContent = '"' + (contratto.tipoContratto || '') + '"'
+    if (contratto.sezione === 'doc') { const bc=document.getElementById('box-consensi-doc'); if(bc) bc.style.display='block' }
     if (isRecesso) {
       // Recesso: niente documenti, mostra scelta data cessazione
       document.getElementById('block-documenti').style.display = 'none'
@@ -397,6 +415,15 @@ async function firmaContratto() {
   if (!document.getElementById('chk-vessatorie').checked) { alert('Devi approvare le clausole specifiche (art. 1341 c.c.).'); return }
   if (!document.getElementById('chk-fiscale').checked) { alert('Devi acconsentire al trattamento dati per finalita fiscali e contabili.'); return }
 
+  let consensoPresaVisione = null, consensoMarketing = null
+  if (contratto && contratto.sezione === 'doc') {
+    if (!document.getElementById('chk-presa-visione').checked) { alert('Devi dichiarare la presa visione dell\u0027informativa e la nomina a Responsabile del trattamento.'); return }
+    consensoPresaVisione = true
+    const mktSi = document.getElementById('mkt-si').checked, mktNo = document.getElementById('mkt-no').checked
+    if (!mktSi && !mktNo) { alert('Indica se acconsenti o meno alle comunicazioni commerciali e di marketing.'); return }
+    consensoMarketing = mktSi === true
+  }
+
   let dataCessazione = null
   let recessoMotivo = null, recessoAltro = ''
   if (isRecesso) {
@@ -446,7 +473,7 @@ async function firmaContratto() {
       }
     }
     const pivaSiEl = document.getElementById('piva-si')
-    const datiAggiornati = { ...contratto, statoFirma:'Firmato', dataFirma, firmaBase64, ipFirma:ip, timestampFirma:now.toISOString(), hasPiva: !isRecesso && pivaSiEl.checked, consensoFiscale: true, documentiCaricati }
+    const datiAggiornati = { ...contratto, statoFirma:'Firmato', dataFirma, firmaBase64, ipFirma:ip, timestampFirma:now.toISOString(), hasPiva: !isRecesso && pivaSiEl.checked, consensoFiscale: true, documentiCaricati, consensoPresaVisione, consensoMarketing }
     if (isRecesso) { datiAggiornati.dataCessazione = dataCessazione; datiAggiornati.recessoMotivo = recessoMotivo; datiAggiornati.recessoAltro = recessoAltro }
 
     const { data: sresp, error } = await db.functions.invoke('firma-portale', { body: { action:'sign', token, dati: datiAggiornati } })
